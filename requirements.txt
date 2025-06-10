@@ -1,0 +1,7 @@
+Flask>=2.0.0
+gunicorn
+openai>=1.0.0
+cfenv>=0.5.3
+python-dotenv>=0.19.0
+httpx>=0.24.0
+fastmcp>=2.7.1

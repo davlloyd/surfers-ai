@@ -1,0 +1,12 @@
+applications:
+- name: australia-map-chat
+  memory: 512M
+  buildpacks:
+  - python_buildpack
+  command: gunicorn --bind 0.0.0.0:$PORT "app:create_app()"
+  env:
+    FLASK_ENV: production
+    OPENAI_API_KEY: ((openai_api_key))
+    OPENAI_MODEL: gpt-4o
+  services:
+  - pyhana

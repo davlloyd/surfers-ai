@@ -1,0 +1,25 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "name": "Sydney", "state": "NSW", "population": 5312163 }, "geometry": { "type": "Point", "coordinates": [151.2093, -33.8688] }},
+    { "type": "Feature", "properties": { "name": "Melbourne", "state": "VIC", "population": 5078195 }, "geometry": { "type": "Point", "coordinates": [144.9631, -37.8136] }},
+    { "type": "Feature", "properties": { "name": "Brisbane", "state": "QLD", "population": 2514184 }, "geometry": { "type": "Point", "coordinates": [153.0251, -27.4698] }},
+    { "type": "Feature", "properties": { "name": "Perth", "state": "WA", "population": 2059484 }, "geometry": { "type": "Point", "coordinates": [115.8575, -31.9505] }},
+    { "type": "Feature", "properties": { "name": "Adelaide", "state": "SA", "population": 1345777 }, "geometry": { "type": "Point", "coordinates": [138.6007, -34.9285] }},
+    { "type": "Feature", "properties": { "name": "Canberra", "state": "ACT", "population": 462213 }, "geometry": { "type": "Point", "coordinates": [149.1300, -35.2809] }},
+    { "type": "Feature", "properties": { "name": "Hobart", "state": "TAS", "population": 247086 }, "geometry": { "type": "Point", "coordinates": [147.3272, -42.8821] }},
+    { "type": "Feature", "properties": { "name": "Darwin", "state": "NT", "population": 147255 }, "geometry": { "type": "Point", "coordinates": [130.8456, -12.4634] }},
+    { "type": "Feature", "properties": { "name": "Geelong", "state": "VIC", "population": 263280 }, "geometry": { "type": "Point", "coordinates": [144.3617, -38.1499] }},
+    { "type": "Feature", "properties": { "name": "Newcastle", "state": "NSW", "population": 322278 }, "geometry": { "type": "Point", "coordinates": [151.7817, -32.9267] }},
+    { "type": "Feature", "properties": { "name": "Wollongong", "state": "NSW", "population": 302739 }, "geometry": { "type": "Point", "coordinates": [150.8931, -34.4278] }},
+    { "type": "Feature", "properties": { "name": "Sunshine Coast", "state": "QLD", "population": 333436 }, "geometry": { "type": "Point", "coordinates": [153.0667, -26.6500] }},
+    { "type": "Feature", "properties": { "name": "Gold Coast", "state": "QLD", "population": 635191 }, "geometry": { "type": "Point", "coordinates": [153.4000, -28.0167] }},
+    { "type": "Feature", "properties": { "name": "Townsville", "state": "QLD", "population": 180820 }, "geometry": { "type": "Point", "coordinates": [146.8179, -19.2589] }},
+    { "type": "Feature", "properties": { "name": "Cairns", "state": "QLD", "population": 152729 }, "geometry": { "type": "Point", "coordinates": [145.7700, -16.9203] }},
+    { "type": "Feature", "properties": { "name": "Toowoomba", "state": "QLD", "population": 142163 }, "geometry": { "type": "Point", "coordinates": [151.9537, -27.5606] }},
+    { "type": "Feature", "properties": { "name": "Ballarat", "state": "VIC", "population": 111361 }, "geometry": { "type": "Point", "coordinates": [143.8500, -37.5662] }},
+    { "type": "Feature", "properties": { "name": "Bendigo", "state": "VIC", "population": 103034 }, "geometry": { "type": "Point", "coordinates": [144.2802, -36.7570] }},
+    { "type": "Feature", "properties": { "name": "Launceston", "state": "TAS", "population": 87328 }, "geometry": { "type": "Point", "coordinates": [147.1394, -41.4388] }},
+    { "type": "Feature", "properties": { "name": "Mackay", "state": "QLD", "population": 80000 }, "geometry": { "type": "Point", "coordinates": [149.1860, -21.1411] }}
+  ]
+}

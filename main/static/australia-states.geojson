@@ -1,0 +1,29 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "STATE_NAME": "New South Wales" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[150, -28], [153, -28], [153, -33], [150, -33], [150, -28]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "STATE_NAME": "Victoria" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[144, -34], [147, -34], [147, -38], [144, -38], [144, -34]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "STATE_NAME": "Queensland" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[138, -10], [153, -10], [153, -28], [138, -28], [138, -10]]]
+      }
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Australia Map Chatbot</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .header-title {
+            flex-grow: 1;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        #mcp-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+
+        #mcp-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        #mcp-indicator i {
+            font-size: 1.2em;
+        }
+
+        .available i {
+            color: #4CAF50;
+        }
+
+        .unavailable i {
+            color: #f44336;
+        }
+
+        #mcp-tools {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 10px;
+            padding: 15px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            min-width: 200px;
+            max-width: 300px;
+        }
+
+        #mcp-tools ul {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+        }
+
+        #mcp-tools li {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        #mcp-tools li:last-child {
+            border-bottom: none;
+        }
+
+        #mcp-status:hover #mcp-tools {
+            display: block;
+        }
+
+        .main-content {
+            margin-top: 50px;  /* Same as header height */
+            height: calc(100vh - 50px);
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-title">Australia Map Chatbot</div>
+        <div id="mcp-status">
+            <div id="mcp-indicator">
+                <i class="fas fa-circle"></i>
+                <span id="mcp-state">Checking...</span>
+            </div>
+            <div id="mcp-tools"></div>
+        </div>
+    </header>
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        function updateMCPStatus() {
+            fetch('/api/mcp-status')
+                .then(response => response.json())
+                .then(data => {
+                    const statusDiv = document.getElementById('mcp-status');
+                    const stateSpan = document.getElementById('mcp-state');
+                    const toolsDiv = document.getElementById('mcp-tools');
+                    if (data.status === 'healthy') {
+                        statusDiv.className = 'available';
+                        stateSpan.textContent = 'Available';
+                        
+                        // Display tools and service info
+                        let toolsHtml = '<strong>Service Info:</strong><br>';
+                        toolsHtml += `${data.service_info.name} v${data.service_info.version}<br>`;
+                        toolsHtml += '<strong>Dependencies:</strong><ul>';
+                        for (const [dep, status] of Object.entries(data.service_info.dependencies)) {
+                            toolsHtml += `<li>${dep}: ${status}</li>`;
+                        }
+                        toolsHtml += '</ul>';
+                        toolsHtml += '<strong>Available Tools:</strong><ul>';
+                        data.tools.forEach(tool => {
+                            toolsHtml += `<li><strong>${tool.name}</strong>: ${tool.description}</li>`;
+                        });
+                        toolsHtml += '</ul>';
+                        toolsDiv.innerHTML = toolsHtml;
+                    } else {
+                        statusDiv.className = 'unavailable';
+                        stateSpan.textContent = 'Unavailable';
+                        toolsDiv.innerHTML = `<p class="error">${data.error || 'Server not responding'}</p>`;
+                    }
+                })
+                .catch(error => {
+                    const statusDiv = document.getElementById('mcp-status');
+                    const stateSpan = document.getElementById('mcp-state');
+                    statusDiv.className = 'unavailable';
+                    stateSpan.textContent = 'Error';
+                    document.getElementById('mcp-tools').innerHTML = `<p class="error">${error.message}</p>`;
+                });
+        }
+
+        // Check status immediately and every 30 seconds
+        updateMCPStatus();
+        setInterval(updateMCPStatus, 30000);
+    </script>
+</body>
+</html>

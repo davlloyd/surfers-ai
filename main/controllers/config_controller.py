@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, current_app
 import os
 
-config_bp = Blueprint('config_bp', __name__)
+config_bp = Blueprint('config_bp', __name__, url_prefix='/api')
 
 @config_bp.route('/config', methods=['GET'])
 def get_config():
@@ -83,6 +83,10 @@ def get_environment_info():
             'value': os.getenv('FLASK_ENV'),
             'current': os.getenv('FLASK_ENV', 'development'),
             'default': 'development'
+        },
+        'PORT': {
+            'current': current_app.config.get('PORT'),
+            'default': 8080
         }
     }
     
@@ -118,4 +122,7 @@ def get_config_status():
         return jsonify({
             'status': 'error',
             'message': str(e)
-        }), 500 
+        }), 500
+
+# Export alias for app.py import
+config_controller = config_bp 

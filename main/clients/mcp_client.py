@@ -1,16 +1,15 @@
 import os
-from fastmcp import Client
-from typing import Dict, Any, Optional
-import logging
-from contextlib import asynccontextmanager
-import asyncio
 import json
+import logging
+from typing import Dict, Any, Optional
+import asyncio
 import httpx
+from fastmcp import Client
 
 logger = logging.getLogger(__name__)
 
 class MCPWeatherClient:
-    """Client for communicating with the MCP weather server using fastmcp.Client."""
+    """Client for communicating with the MCP weather server using FastMCP 2.7+."""
     
     def __init__(self, base_url: Optional[str] = None):
         """Initialize the MCP weather client.
@@ -29,63 +28,63 @@ class MCPWeatherClient:
         logger.info(f"Initialized MCPWeatherClient with URL: {self.base_url}")
         self._location_cache = {}  # Cache for location data
 
-    @asynccontextmanager
-    async def get_client(self):
-        """Get a properly managed client connection using async context manager."""
-        client = None
-        try:
-            # Use FastMCP 2.7+ Client with streamable-http transport
-            client = Client(self.base_url)
-            async with client as connected_client:
-                yield connected_client
-        except Exception as e:
-            logger.error(f"Error with client connection: {e}", exc_info=True)
-            raise
-        finally:
-            if client:
-                logger.debug("Client connection closed automatically")
+    async def _handle_response(self, response: Any, context: str) -> Dict[str, Any]:
+        """Helper method to handle FastMCP 2.7+ responses consistently."""
+        if response:
+            try:
+                # FastMCP 2.7+ returns the response directly
+                if isinstance(response, dict):
+                    return response
+                # If it's a string, try to parse as JSON
+                elif isinstance(response, str):
+                    return json.loads(response)
+                # If it's a response object (FastMCP 2.7+), it has a `content` list
+                else:
+                    # Prefer new FastMCP Response contract: object with `.content`
+                    if hasattr(response, 'content'):
+                        content_items = getattr(response, 'content', None)
+                        if content_items and isinstance(content_items, list):
+                            first_item = content_items[0]
+                            if hasattr(first_item, 'text'):
+                                try:
+                                    data = json.loads(first_item.text)
+                                    logger.debug(f"Response data from {context}: {json.dumps(data, indent=2)}")
+                                    return data
+                                except json.JSONDecodeError:
+                                    return {"text": first_item.text}
+                            logger.warning(f"First response item missing text attribute from {context}: {first_item}")
+                            return {"error": f"First response item missing text attribute from {context}"}
+                        logger.warning(f"Empty response content from {context}: {response}")
+                        return {"error": f"Empty response content from {context}"}
+
+                    # Backward compatibility: sometimes raw list is returned
+                    if isinstance(response, list) and len(response) > 0:
+                        first_item = response[0]
+                        if hasattr(first_item, 'text'):
+                            try:
+                                data = json.loads(first_item.text)
+                                logger.debug(f"Response data from {context}: {json.dumps(data, indent=2)}")
+                                return data
+                            except json.JSONDecodeError:
+                                return {"text": first_item.text}
+                        logger.warning(f"First response item missing text attribute from {context}: {first_item}")
+                        return {"error": f"First response item missing text attribute from {context}"}
+
+                    logger.warning(f"Empty or invalid response from {context}: {response}")
+                    return {"error": f"Empty or invalid response from {context}"}
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to parse JSON from {context}: {response}")
+                return {"error": f"Failed to parse response as JSON: {str(e)}"}
+        else:
+            logger.warning(f"Empty response from MCP server for {context}")
+            return {"error": f"Empty response from MCP server for {context}"}
 
     async def _call_mcp_tool(self, tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Helper method to call an MCP tool and handle response using modern FastMCP 2.7+ patterns."""
+        """Helper method to call an MCP tool using FastMCP 2.7+ patterns."""
         try:
-            async with self.get_client() as client:
-                # Use modern FastMCP 2.7+ call_tool method
+            async with Client(self.base_url) as client:
                 response = await client.call_tool(tool_name, params)
-                
-                # Handle FastMCP 2.7+ response format with proper content parsing
-                if response and hasattr(response, 'content') and response.content:
-                    # Modern response format: response.content is a list of content items
-                    content_items = response.content
-                    if content_items and len(content_items) > 0:
-                        content_item = content_items[0]
-                        if hasattr(content_item, 'text'):
-                            try:
-                                return json.loads(content_item.text)
-                            except json.JSONDecodeError as e:
-                                logger.warning(f"Failed to parse JSON from tool '{tool_name}' response: {content_item.text}")
-                                return {"error": f"Failed to parse response as JSON: {str(e)}"}
-                        else:
-                            logger.warning(f"Tool '{tool_name}' response content item has no text attribute")
-                            return {"error": f"Tool '{tool_name}' response content is not text."}
-                    else:
-                        logger.warning(f"Tool '{tool_name}' response has empty content list")
-                        return {"error": "Empty response content from MCP server."}
-                elif response and isinstance(response, list) and len(response) > 0:
-                    # Legacy response format handling for backward compatibility
-                    content_item = response[0]
-                    if hasattr(content_item, 'text'):
-                        try:
-                            return json.loads(content_item.text)
-                        except json.JSONDecodeError as e:
-                            logger.warning(f"Failed to parse JSON from legacy response: {content_item.text}")
-                            return {"error": f"Failed to parse response as JSON: {str(e)}"}
-                    else:
-                        logger.warning(f"Tool '{tool_name}' legacy response is not text content. Content: {content_item}")
-                        return {"error": f"Tool '{tool_name}' response is not text content."}
-                else:
-                    # Handle empty or malformed responses
-                    logger.warning(f"Malformed or empty response from MCP server for tool '{tool_name}'. Response: {response}")
-                    return {"error": "Malformed or empty response from MCP server."}
+                return await self._handle_response(response, f"tool '{tool_name}'")
                     
         except httpx.ConnectError as e:
             logger.error(f"Connection error calling tool '{tool_name}': {str(e)}")
@@ -94,9 +93,13 @@ class MCPWeatherClient:
             logger.error(f"Timeout error calling tool '{tool_name}': {str(e)}")
             return {"error": "Request timed out. The MCP server may be overloaded."}
         except Exception as e:
-            # Log the full error with traceback for debugging
-            logger.error(f"Client-side error calling tool '{tool_name}': {str(e)}", exc_info=True)
-            return {"error": f"Client error: {str(e)}"}
+            error_msg = str(e)
+            if "TaskGroup" in error_msg or "ExceptionGroup" in error_msg:
+                logger.error(f"Async error calling tool '{tool_name}': {error_msg}", exc_info=True)
+                return {"error": "Internal async error. Please try again."}
+            else:
+                logger.error(f"Client error calling tool '{tool_name}': {error_msg}", exc_info=True)
+                return {"error": f"Client error: {error_msg}"}
 
     async def lookup_location(self, name: str, limit: int = 5) -> Dict[str, Any]:
         """Look up a location by name, using cache if available."""
@@ -132,38 +135,115 @@ class MCPWeatherClient:
     
     async def get_weather(self, location_id: int) -> Dict[str, Any]:
         """Get weather data for a specific location."""
-        return await self._call_mcp_tool("get_weather", {"location_id": location_id})
+        result = await self._call_mcp_tool("get_weather", {"location_id": location_id})
+        if "error" in result:
+            return result
+        
+        # Extract entries from the response
+        if "entries" in result:
+            return {
+                "entries": result["entries"],
+                "units": result.get("units"),
+                "issueDateTime": result.get("issueDateTime")
+            }
+        return result
     
     async def get_swell(self, location_id: int, days: int = 3) -> Dict[str, Any]:
         """Get swell data for a specific location."""
-        return await self._call_mcp_tool("get_swell", {"location_id": location_id, "days": days})
+        result = await self._call_mcp_tool("get_swell", {"location_id": location_id, "days": days})
+        if "error" in result:
+            return result
+        
+        # Extract entries from the response
+        if "entries" in result:
+            return {
+                "entries": result["entries"],
+                "units": result.get("units"),
+                "issueDateTime": result.get("issueDateTime"),
+                "message": result.get("message")  # Include message for when swell data is not available
+            }
+        return result
     
     async def get_wind(self, location_id: int) -> Dict[str, Any]:
         """Get wind data for a specific location."""
-        return await self._call_mcp_tool("get_wind", {"location_id": location_id})
+        result = await self._call_mcp_tool("get_wind", {"location_id": location_id})
+        if "error" in result:
+            return result
+        
+        # Extract entries from the response
+        if "entries" in result:
+            return {
+                "entries": result["entries"],
+                "units": result.get("units"),
+                "issueDateTime": result.get("issueDateTime")
+            }
+        return result
         
     async def get_location_data(self, location_id: int, days: int = 3) -> Dict[str, Any]:
         """Get all weather-related data for a location in a single request."""
-        return await self._call_mcp_tool("get_location_data", {
+        result = await self._call_mcp_tool("get_location_data", {
             "location_id": location_id,
             "days": days
         })
+        if "error" in result:
+            return result
+        
+        # Process each section of the response
+        processed_result = {}
+        
+        # Process weather data
+        if "weather" in result:
+            weather = result["weather"]
+            if "entries" in weather:
+                processed_result["weather"] = {
+                    "entries": weather["entries"],
+                    "units": weather.get("units"),
+                    "issueDateTime": weather.get("issueDateTime")
+                }
+            else:
+                processed_result["weather"] = weather
+        
+        # Process swell data
+        if "swell" in result:
+            swell = result["swell"]
+            if "entries" in swell:
+                processed_result["swell"] = {
+                    "entries": swell["entries"],
+                    "units": swell.get("units"),
+                    "issueDateTime": swell.get("issueDateTime"),
+                    "message": swell.get("message")
+                }
+            else:
+                processed_result["swell"] = swell
+        
+        # Process wind data (from weather response)
+        if "wind" in result:
+            wind = result["wind"]
+            if "entries" in wind:
+                processed_result["wind"] = {
+                    "entries": wind["entries"],
+                    "units": wind.get("units"),
+                    "issueDateTime": wind.get("issueDateTime")
+                }
+            else:
+                processed_result["wind"] = wind
+        
+        return processed_result
         
     async def health_check(self) -> Dict[str, Any]:
         """Check the health of the MCP server."""
         return await self._call_mcp_tool("health", {})
     
     async def list_tools(self) -> Dict[str, Any]:
-        """List available tools from the MCP server."""
+        """List available tools from the MCP server using FastMCP 2.7+."""
         try:
-            async with self.get_client() as client:
+            async with Client(self.base_url) as client:
                 tools = await client.list_tools()
                 return {
                     "tools": [
                         {
                             "name": tool.name,
-                            "description": tool.description,
-                            "input_schema": tool.inputSchema.model_dump() if hasattr(tool, 'inputSchema') else None
+                            "description": tool.description
                         }
                         for tool in tools
                     ]
@@ -173,9 +253,9 @@ class MCPWeatherClient:
             return {"error": f"Error listing tools: {str(e)}"}
     
     async def list_resources(self) -> Dict[str, Any]:
-        """List available resources from the MCP server."""
+        """List available resources from the MCP server using FastMCP 2.7+."""
         try:
-            async with self.get_client() as client:
+            async with Client(self.base_url) as client:
                 resources = await client.list_resources()
                 return {
                     "resources": [
@@ -193,36 +273,17 @@ class MCPWeatherClient:
             return {"error": f"Error listing resources: {str(e)}"}
     
     async def read_resource(self, uri: str) -> Dict[str, Any]:
-        """Read a specific resource from the MCP server."""
+        """Read a specific resource from the MCP server using FastMCP 2.7+."""
         try:
-            async with self.get_client() as client:
-                resource = await client.read_resource(uri)
-                
-                # Handle FastMCP 2.7+ resource response format
-                if resource and hasattr(resource, 'content') and resource.content:
-                    content_items = resource.content
-                    if content_items and len(content_items) > 0:
-                        content_item = content_items[0]
-                        if hasattr(content_item, 'text'):
-                            try:
-                                return json.loads(content_item.text)
-                            except json.JSONDecodeError:
-                                # Return raw text if not JSON
-                                return {"text": content_item.text}
-                        else:
-                            return {"error": "Resource content is not text"}
-                    else:
-                        return {"error": "Empty resource content"}
-                else:
-                    return {"error": "No resource content returned"}
+            async with Client(self.base_url) as client:
+                response = await client.read_resource(uri)
+                return await self._handle_response(response, f"resource '{uri}'")
                     
         except Exception as e:
             logger.error(f"Error reading resource '{uri}': {e}", exc_info=True)
             return {"error": f"Error reading resource: {str(e)}"}
     
     async def close(self):
-        """Close method for compatibility - modern implementation uses context manager."""
-        # Modern FastMCP 2.7+ client connections are managed via context managers
-        # This method is kept for backward compatibility but doesn't need to do anything
-        logger.debug("Close called - connections are managed via context managers in modern FastMCP")
+        """Close method for compatibility - FastMCP 2.7+ handles connections via context managers."""
+        logger.debug("Close called - connections are managed via context managers in FastMCP 2.7+")
         pass 

@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "surfers-ai"
+version = "2.0.0"
+description = "AI-powered chat interface for surfers"
+authors = [
+    {name = "Surfers Lookout", email = "info@surferslookout.com"},
+]
+dependencies = [
+    "flask>=3.0.0",
+    "gunicorn>=21.2.0",
+    "python-dotenv>=1.0.0",
+    "openai>=1.12.0",
+    "fastmcp>=2.7.0",
+    "pyservicebinding>=0.3.0",
+]
+requires-python = ">=3.12"
+readme = "README.md"
+license = {text = "MIT"}
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "black>=24.1.0",
+    "flake8>=7.0.0",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.flake8]
+max-line-length = 100
+exclude = [".git", "__pycache__", "build", "dist"] 
